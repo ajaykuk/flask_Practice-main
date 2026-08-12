@@ -109,9 +109,14 @@ jobs:
       contents: read
 
     steps:
-       
-        
-      # --------------------------------------------------------
+    #     - name: Checkout code
+    #      uses: actions/checkout@v4
+    #    - name: check GitHub environment
+    #        run: |
+    #            echo Repository: ${{ github.repository }}
+    #            echo "Ref: ${{ github.ref }}"
+    #           echo "Event: ${{ github.event_name }}"
+    # #   # --------------------------------------------------------
       # Configure AWS using GitHub OIDC
       # --------------------------------------------------------
       - name: Configure AWS credentials
