@@ -1,0 +1,158 @@
+# GitHub Actions CI/CD — ECR + SSM + EC2
+
+name: Flask App CI/CD
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: flask-student-app
+  IMAGE_TAG: latest
+
+jobs:
+
+  # ============================================================
+  # 1. Run tests
+  # ============================================================
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: Run pytest
+        run: |
+          python -m pytest
+
+
+  # ============================================================
+  # 2. Build Docker image and push to ECR
+  # ============================================================
+  build-and-push:
+    name: Build and Push to ECR
+    needs: test
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # --------------------------------------------------------
+      # Configure AWS using GitHub OIDC
+      # --------------------------------------------------------
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::i-070dfd1bcdea9ec35:role/GitHubActions-Flask-ECR-Role
+          aws-region: ${{ env.AWS_REGION }}
+
+      # --------------------------------------------------------
+      # Login to Amazon ECR
+      # --------------------------------------------------------
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # --------------------------------------------------------
+      # Build Docker image
+      # --------------------------------------------------------
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }} .
+
+      # --------------------------------------------------------
+      # Push Docker image to ECR
+      # --------------------------------------------------------
+      - name: Push Docker image to ECR
+        run: |
+          docker push \
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+
+
+  # ============================================================
+  # 3. Deploy image to EC2 using SSM
+  # ============================================================
+  deploy:
+    name: Deploy to EC2
+    needs: build-and-push
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+
+      # --------------------------------------------------------
+      # Configure AWS using GitHub OIDC
+      # --------------------------------------------------------
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::490600801130:role/GitHubActions-Flask-ECR-Role
+          aws-region: ${{ env.AWS_REGION }}
+
+      # --------------------------------------------------------
+      # Deploy to EC2 using SSM
+      # --------------------------------------------------------
+      - name: Deploy application to EC2
+        run: |
+
+          aws ssm send-command \
+            --instance-ids "i-XXXXXXXXXXXXXXXXX" \
+            --document-name "AWS-RunShellScript" \
+            --parameters 'commands=[
+              "set -e",
+
+              "echo Logging in to ECR...",
+
+              "aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 490600801130.dkr.ecr.us-east-1.amazonaws.com",
+
+              "echo Pulling latest image...",
+
+              "docker pull 490600801130.dkr.ecr.us-east-1.amazonaws.com/flask-student-app:latest",
+
+              "echo Stopping old container...",
+
+              "docker stop flask-student-app || true",
+
+              "echo Removing old container...",
+
+              "docker rm flask-student-app || true",
+
+              "echo Starting new container...",
+
+              "docker run -d --name flask-student-app --restart unless-stopped -p 5000:5000 --env-file /home/ec2-user/.env 490600801130.dkr.ecr.us-east-1.amazonaws.com/flask-student-app:latest",
+
+              "echo Deployment completed successfully.",
+
+              "docker ps"
+            ]'
+
