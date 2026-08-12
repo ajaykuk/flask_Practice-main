@@ -69,7 +69,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::i-490600801130:role/GitHubActions-Flask-ECR-Role
+          role-to-assume: arn:aws:iam::490600801130:role/GitHubActions-Flask-ECR-Role
           aws-region: ${{ env.AWS_REGION }}
 
       # --------------------------------------------------------
@@ -158,4 +158,3 @@ jobs:
 
 
 
-            
