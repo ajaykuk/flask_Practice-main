@@ -68,6 +68,21 @@ jobs:
             echo "Repository: ${{ github.repository }}"
             echo "Ref: ${{ github.ref }}"
             echo "Event: ${{ github.event_name }}" 
+      - name: Check OIDC permissions
+        run: |
+            echo "ACTIONS_ID_TOKEN_REQUEST_URL is set:"
+            if [ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ]; then
+                echo "YES"
+            else
+                echo "NO"
+            fi
+
+            echo "ACTIONS_ID_TOKEN_REQUEST_TOKEN is set:"
+            if [ -n "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" ]; then
+                echo "YES"
+            else
+                echo "NO"
+            fi
 
       # --------------------------------------------------------
       # Configure AWS using GitHub OIDC
