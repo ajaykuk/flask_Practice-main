@@ -9,8 +9,8 @@ import os
 load_dotenv()
 
 app = Flask(__name__)
-app.config["MONGO_URI"] = os.getenv("MONGO_URI")
-app.secret_key = os.getenv("SECRET_KEY")
+app.config["MONGO_URI"] = os.getenv("MONGO_URI","mongodb+srv://ajaykuk_db_user:Monday10*@cluster0.ecnfcwl.mongodb.net/test_student_db?retryWrites=true&w=majority")
+app.secret_key = os.getenv("SECRET_KEY","b2507fe13ebc8c42f099191e17426ad787ed300ec8b094615cb1d19c4427b024")
 
 # Use certifi CA bundle explicitly for cross-platform TLS reliability
 # (notably fixes common macOS certificate verification failures).
