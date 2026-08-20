@@ -69,8 +69,8 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           args: >
-            -Dsonar.projectKey=${{ vars.ajaykuk }}
-            -Dsonar.organization=${{ vars.Ajay }}
+            -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }}
+            -Dsonar.organization=${{ vars.SONAR_ORGANIZATION }}
             -Dsonar.sources=.
             -Dsonar.tests=tests
             -Dsonar.exclusions=**/.venv/**,**/venv/**,**/__pycache__/**,**/.pytest_cache/**,**/tests/**
@@ -247,5 +247,4 @@ jobs:
 
 
 
-            
             
