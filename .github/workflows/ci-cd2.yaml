@@ -1,0 +1,251 @@
+# GitHub Actions CI/CD — ECR + SSM + EC2
+
+name: Flask App CI/CD
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: flask-student-app
+  IMAGE_TAG: latest
+
+jobs:
+
+  # ============================================================
+  # 1. Run tests
+  # ============================================================
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: Run pytest
+        run: |
+          python -m pytest
+
+
+
+
+# ==========================================
+  # 2. SONARQUBE SECURITY / CODE QUALITY SCAN
+  # ==========================================
+  sonar:
+    name: SonarQube Security Scan
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v8.2.1
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+        with:
+          args: >
+            -Dsonar.projectKey=${{ vars.ajaykuk }}
+            -Dsonar.organization=${{ vars.Ajay }}
+            -Dsonar.sources=.
+            -Dsonar.tests=tests
+            -Dsonar.exclusions=**/.venv/**,**/venv/**,**/__pycache__/**,**/.pytest_cache/**,**/tests/**
+
+
+  # ============================================================
+  # 2. Build Docker image and push to ECR
+  # ============================================================
+  build-and-push:
+    name: Build and Push to ECR
+    needs: test
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check GitHub environment
+        run: |
+            echo "Repository: ${{ github.repository }}"
+            echo "Ref: ${{ github.ref }}"
+            echo "Event: ${{ github.event_name }}" 
+      - name: Check OIDC permissions
+        run: |
+            echo "ACTIONS_ID_TOKEN_REQUEST_URL is set:"
+            if [ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ]; then
+                echo "YES"
+            else
+                echo "NO"
+            fi
+
+            echo "ACTIONS_ID_TOKEN_REQUEST_TOKEN is set:"
+            if [ -n "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" ]; then
+                echo "YES"
+            else
+                echo "NO"
+            fi
+      - name: Check OIDC token claims
+        env:
+            ACTIONS_ID_TOKEN_REQUEST_URL: ${{ env.ACTIONS_ID_TOKEN_REQUEST_URL }}
+            ACTIONS_ID_TOKEN_REQUEST_TOKEN: ${{ env.ACTIONS_ID_TOKEN_REQUEST_TOKEN }}
+        run: |
+            TOKEN=$(curl -sS \
+                -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+                "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" \
+                | python -c "import sys,json; print(json.load(sys.stdin)['value'])")
+
+            echo "OIDC token received successfully"
+
+            python - "$TOKEN" <<'PY'
+            import sys
+            import base64
+            import json
+
+            token = sys.argv[1]
+            payload = token.split(".")[1]
+            payload += "=" * (-len(payload) % 4)
+
+            claims = json.loads(base64.urlsafe_b64decode(payload))
+
+            print("iss:", claims.get("iss"))
+            print("aud:", claims.get("aud"))
+            print("sub:", claims.get("sub"))
+            print("repository:", claims.get("repository"))
+            print("ref:", claims.get("ref"))
+            print("exp:", claims.get("exp"))
+            print("iat:", claims.get("iat"))
+            PY
+      # --------------------------------------------------------
+      # Configure AWS using GitHub OIDC
+      # --------------------------------------------------------
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::490600801130:role/GitHubActions-Flask-ECR-Role
+          aws-region: ${{ env.AWS_REGION }}
+
+      # --------------------------------------------------------
+      # Login to Amazon ECR
+      # --------------------------------------------------------
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # --------------------------------------------------------
+      # Build Docker image
+      # --------------------------------------------------------
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }} .
+
+      # --------------------------------------------------------
+      # Push Docker image to ECR
+      # --------------------------------------------------------
+      - name: Push Docker image to ECR
+        run: |
+          docker push \
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+
+
+  # ============================================================
+  # 3. Deploy image to EC2 using SSM
+  # ============================================================
+  deploy:
+    name: Deploy to EC2
+    needs: build-and-push
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+    #   - name: Checkout code
+    #     uses: actions/checkout@v4
+    #   - name: Check GitHub environment
+    #     run: |
+    #         echo "Repository: ${{ github.repository }}"
+    #         echo "Ref: ${{ github.ref }}"
+    #         echo "Event: ${{ github.event_name }}" 
+    # #   # --------------------------------------------------------
+      # Configure AWS using GitHub OIDC
+      # --------------------------------------------------------
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::490600801130:role/GitHubActions-Flask-ECR-Role
+          aws-region: ${{ env.AWS_REGION }}
+
+      # --------------------------------------------------------
+      # Deploy to EC2 using SSM
+      # --------------------------------------------------------
+      - name: Deploy application to EC2
+        run: |
+
+          aws ssm send-command \
+            --instance-ids "i-070dfd1bcdea9ec35" \
+            --document-name "AWS-RunShellScript" \
+            --parameters 'commands=[
+              "set -e",
+
+              "echo Logging in to ECR...",
+
+              "aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 490600801130.dkr.ecr.us-east-1.amazonaws.com",
+
+              "echo Pulling latest image...",
+
+              "docker pull 490600801130.dkr.ecr.us-east-1.amazonaws.com/flask-student-app:latest",
+
+              "echo Stopping old container...",
+
+              "docker stop flask-student-app || true",
+
+              "echo Removing old container...",
+
+              "docker rm flask-student-app || true",
+
+              "echo Starting new container...",
+
+              "docker run -d --name flask-student-app --restart unless-stopped -p 5000:5000 --env-file /home/ec2-user/.env 490600801130.dkr.ecr.us-east-1.amazonaws.com/flask-student-app:latest",
+
+              "echo Deployment completed successfully.",
+
+              "docker ps"
+            ]'
+
+
+
+
+
+            
