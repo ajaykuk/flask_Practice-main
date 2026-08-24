@@ -338,5 +338,153 @@ jobs:
             Deployment completed successfully.
          
 
+              # ==========================================================
+  # JOB 6 - FAILURE EMAIL
+  # ==========================================================
 
-            
+  notify-failure:
+
+    name: Send Deployment Failure Email
+
+    needs:
+      - test
+      - sonar
+      - build-and-push
+      - deploy
+
+    # Always evaluate this job, even when an earlier job fails.
+    # Send email if any required job failed.
+    if: >
+      always() &&
+      (
+        needs.test.result == 'failure' ||
+        needs.sonar.result == 'failure' ||
+        needs.build-and-push.result == 'failure' ||
+        needs.deploy.result == 'failure'
+      )
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # ------------------------------------------------------
+      # Send failure email
+      # ------------------------------------------------------
+
+      - name: Send failure email
+        uses: dawidd6/action-send-mail@v6
+
+        with:
+
+          server_address: ${{ secrets.SMTP_SERVER }}
+
+          server_port: ${{ secrets.SMTP_PORT }}
+
+          username: ${{ secrets.SMTP_USERNAME }}
+
+          password: ${{ secrets.SMTP_PASSWORD }}
+
+
+          # --------------------------------------------------
+          # Email subject
+          # --------------------------------------------------
+
+          subject: "FAILED - Flask Application CI/CD Pipeline"
+
+
+          # --------------------------------------------------
+          # Recipient
+          # --------------------------------------------------
+
+          to: ${{ secrets.NOTIFICATION_EMAIL }}
+
+          from: ${{ secrets.SMTP_USERNAME }}
+
+
+          # --------------------------------------------------
+          # Email body
+          # --------------------------------------------------
+
+          content_type: text
+
+          body: |
+
+            ==================================================
+            FLASK APPLICATION CI/CD PIPELINE FAILED
+            ==================================================
+
+
+            STATUS
+            --------------------------------------------------
+            ❌ FAILURE
+
+
+            GIT INFORMATION
+            --------------------------------------------------
+
+            Repository:
+            ${{ github.repository }}
+
+            Branch:
+            ${{ github.ref_name }}
+
+            Commit SHA:
+            ${{ github.sha }}
+
+
+            JOB STATUS
+            --------------------------------------------------
+
+            Pytest:
+            ${{ needs.test.result }}
+
+            SonarCloud:
+            ${{ needs.sonar.result }}
+
+            Docker Build / ECR Push:
+            ${{ needs.build-and-push.result }}
+
+            EC2 Deployment:
+            ${{ needs.deploy.result }}
+
+
+            DOCKER / ECR INFORMATION
+            --------------------------------------------------
+
+            ECR Repository:
+            ${{ env.ECR_REPOSITORY }}
+
+            Docker Image Tag:
+            ${{ env.IMAGE_TAG }}
+
+            Docker Image:
+            490600801130.dkr.ecr.us-east-1.amazonaws.com/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+
+
+            EC2 INFORMATION
+            --------------------------------------------------
+
+            EC2 Instance:
+            ${{ env.INSTANCE_ID }}
+
+            Container:
+            ${{ env.CONTAINER_NAME }}
+
+
+            GITHUB ACTIONS INFORMATION
+            --------------------------------------------------
+
+            Workflow:
+            ${{ github.workflow }}
+
+            Run Number:
+            ${{ github.run_number }}
+
+            Pipeline Run:
+            https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+
+            ==================================================
+            Please open the pipeline link above to investigate
+            the failed stage.
+            ==================================================
