@@ -225,7 +225,7 @@ jobs:
 
               "echo Pulling latest image...",
 
-              "docker pull 490600801130.dkr.ecr.us-east-1.amazonaws.com/flask-student-app:latest",
+              "docker pull 490600801130.dkr.ecr.us-east-1.amazonaws.com/flask-student-app:${{ github.sha }}",
 
               "echo Stopping old container...",
 
@@ -237,7 +237,7 @@ jobs:
 
               "echo Starting new container...",
 
-              "docker run -d --name flask-student-app --restart unless-stopped -p 5000:5000 --env-file /home/ec2-user/.env 490600801130.dkr.ecr.us-east-1.amazonaws.com/flask-student-app:latest",
+              "docker run -d --name flask-student-app --restart unless-stopped -p 5000:5000 --env-file /home/ec2-user/.env 490600801130.dkr.ecr.us-east-1.amazonaws.com/flask-student-app:${{ github.sha }}",
 
               "echo Deployment completed successfully.",
 
