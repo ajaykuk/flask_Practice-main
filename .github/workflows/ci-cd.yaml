@@ -349,8 +349,7 @@ jobs:
 
     needs:
       - test
-      - build
-      - push
+      - build-and-push
       - deploy
 
     # Run this job even if one of the previous jobs failed
