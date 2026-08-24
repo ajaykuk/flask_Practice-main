@@ -315,7 +315,7 @@ jobs:
             --------------------------------------------------
 
             EC2 Instance:
-            ${{ env.INSTANCE_ID }}
+            ${{ secrets.INSTANCE_ID }}
 
             Container:
             ${{ env.CONTAINER_NAME }}
