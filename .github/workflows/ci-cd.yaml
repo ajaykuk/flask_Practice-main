@@ -336,9 +336,10 @@ jobs:
 
             ==================================================
             Deployment completed successfully.
-         
+    # ==========================================================     
 
-              # ==========================================================
+
+  # ==========================================================
   # JOB 6 - FAILURE EMAIL
   # ==========================================================
 
@@ -348,24 +349,42 @@ jobs:
 
     needs:
       - test
-      - sonar
-      - build-and-push
+      - build
+      - push
       - deploy
 
-    # Always evaluate this job, even when an earlier job fails.
-    # Send email if any required job failed.
-    if: >
-      always() &&
-      (
-        needs.test.result == 'failure' ||
-        needs.sonar.result == 'failure' ||
-        needs.build-and-push.result == 'failure' ||
-        needs.deploy.result == 'failure'
-      )
+    # Run this job even if one of the previous jobs failed
+    if: ${{ always() && (needs.test.result == 'failure' || needs.build.result == 'failure' || needs.push.result == 'failure' || needs.deploy.result == 'failure') }}
 
     runs-on: ubuntu-latest
 
     steps:
+
+      # ------------------------------------------------------
+      # Identify which stage failed
+      # ------------------------------------------------------
+
+      - name: Identify failed stage
+        id: failure_stage
+        shell: bash
+        run: |
+
+          if [ "${{ needs.test.result }}" = "failure" ]; then
+            echo "stage=TEST" >> "$GITHUB_OUTPUT"
+
+          elif [ "${{ needs.build.result }}" = "failure" ]; then
+            echo "stage=BUILD" >> "$GITHUB_OUTPUT"
+
+          elif [ "${{ needs.push.result }}" = "failure" ]; then
+            echo "stage=PUSH TO ECR" >> "$GITHUB_OUTPUT"
+
+          elif [ "${{ needs.deploy.result }}" = "failure" ]; then
+            echo "stage=DEPLOYMENT" >> "$GITHUB_OUTPUT"
+
+          else
+            echo "stage=UNKNOWN" >> "$GITHUB_OUTPUT"
+          fi
+
 
       # ------------------------------------------------------
       # Send failure email
@@ -384,13 +403,11 @@ jobs:
 
           password: ${{ secrets.SMTP_PASSWORD }}
 
-
           # --------------------------------------------------
-          # Email subject
+          # Failure subject
           # --------------------------------------------------
 
-          subject: "FAILED - Flask Application CI/CD Pipeline"
-
+          subject: "FAILED - Flask Deployment - ${{ steps.failure_stage.outputs.stage }}"
 
           # --------------------------------------------------
           # Recipient
@@ -399,7 +416,6 @@ jobs:
           to: ${{ secrets.NOTIFICATION_EMAIL }}
 
           from: ${{ secrets.SMTP_USERNAME }}
-
 
           # --------------------------------------------------
           # Email body
@@ -410,13 +426,17 @@ jobs:
           body: |
 
             ==================================================
-            FLASK APPLICATION CI/CD PIPELINE FAILED
+            FLASK APPLICATION DEPLOYMENT FAILED
             ==================================================
-
 
             STATUS
             --------------------------------------------------
-            ❌ FAILURE
+            ❌ FAILED
+
+
+            FAILED STAGE
+            --------------------------------------------------
+            ${{ steps.failure_stage.outputs.stage }}
 
 
             GIT INFORMATION
@@ -432,46 +452,7 @@ jobs:
             ${{ github.sha }}
 
 
-            JOB STATUS
-            --------------------------------------------------
-
-            Pytest:
-            ${{ needs.test.result }}
-
-            SonarCloud:
-            ${{ needs.sonar.result }}
-
-            Docker Build / ECR Push:
-            ${{ needs.build-and-push.result }}
-
-            EC2 Deployment:
-            ${{ needs.deploy.result }}
-
-
-            DOCKER / ECR INFORMATION
-            --------------------------------------------------
-
-            ECR Repository:
-            ${{ env.ECR_REPOSITORY }}
-
-            Docker Image Tag:
-            ${{ env.IMAGE_TAG }}
-
-            Docker Image:
-            490600801130.dkr.ecr.us-east-1.amazonaws.com/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
-
-
-            EC2 INFORMATION
-            --------------------------------------------------
-
-            EC2 Instance:
-            ${{ env.INSTANCE_ID }}
-
-            Container:
-            ${{ env.CONTAINER_NAME }}
-
-
-            GITHUB ACTIONS INFORMATION
+            PIPELINE INFORMATION
             --------------------------------------------------
 
             Workflow:
@@ -480,11 +461,40 @@ jobs:
             Run Number:
             ${{ github.run_number }}
 
-            Pipeline Run:
+            Run ID:
+            ${{ github.run_id }}
+
+
+            STAGE RESULTS
+            --------------------------------------------------
+
+            TEST:
+            ${{ needs.test.result }}
+
+            BUILD:
+            ${{ needs.build.result }}
+
+            PUSH TO ECR:
+            ${{ needs.push.result }}
+
+            DEPLOY:
+            ${{ needs.deploy.result }}
+
+
+            INVESTIGATE FAILURE
+            --------------------------------------------------
+
+            Open the GitHub Actions run here:
+
             https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
 
+            Commit:
+            https://github.com/${{ github.repository }}/commit/${{ github.sha }}
+
+
             ==================================================
-            Please open the pipeline link above to investigate
-            the failed stage.
-            ==================================================
+            Deployment failed.
+
+            Please check the failed stage and GitHub Actions
+            logs using the links above.
