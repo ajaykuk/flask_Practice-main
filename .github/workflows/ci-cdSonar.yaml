@@ -14,7 +14,7 @@ permissions:
 env:
   AWS_REGION: us-east-1
   ECR_REPOSITORY: flask-student-app
-  IMAGE_TAG: latest
+  IMAGE_TAG: ${{ github.sha }}
 
 jobs:
 

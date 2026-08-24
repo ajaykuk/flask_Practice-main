@@ -49,3 +49,8 @@ jobs:
       - name: Push Docker image
         run: |
           docker push malikaj/flask-student-app:latest
+
+
+
+          key :ajaykuk
+          organisation: ajay
