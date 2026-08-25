@@ -371,12 +371,10 @@ jobs:
           if [ "${{ needs.test.result }}" = "failure" ]; then
             echo "stage=TEST" >> "$GITHUB_OUTPUT"
 
-          elif [ "${{ needs.build.result }}" = "failure" ]; then
+          elif [ "${{ needs.build-and-push.result }}" = "failure" ]; then
             echo "stage=BUILD" >> "$GITHUB_OUTPUT"
 
-          elif [ "${{ needs.push.result }}" = "failure" ]; then
-            echo "stage=PUSH TO ECR" >> "$GITHUB_OUTPUT"
-
+         
           elif [ "${{ needs.deploy.result }}" = "failure" ]; then
             echo "stage=DEPLOYMENT" >> "$GITHUB_OUTPUT"
 
