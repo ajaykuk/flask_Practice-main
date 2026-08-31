@@ -199,16 +199,13 @@ jobs:
             --instance-ids "i-0587a697defb611af" \
             --document-name "AWS-RunShellScript" \
             --parameters 'commands=[
-              "set -e",
-              "echo 'Checking .env file...'",
-
-              "if [ ! -f /home/ec2-user/.env ]; then echo 'ERROR: .env file is missing'; exit 1; fi\",
 
               "echo Logging in to ECR...",
 
               "aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 490600801130.dkr.ecr.us-east-1.amazonaws.com",
+              
 
-              "echo Pulling latest image...",
+              "echo "Deploying image with tag: ${{github.sha}}",
 
               "docker pull 490600801130.dkr.ecr.us-east-1.amazonaws.com/flask-student-app:${{ github.sha }}",
 
