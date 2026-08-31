@@ -227,7 +227,7 @@ jobs:
 
               "echo Checking application health...",
 
-              "curl --fail --silent --show-error http://localhost:5000/health",
+              "curl --fail --silent --show-error http://52.23.172.171:5000/health",
 
               "echo Health check passed successfully!",
 
