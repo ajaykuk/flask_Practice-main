@@ -14,6 +14,8 @@ permissions:
 env:
   AWS_REGION: us-east-1
   ECR_REPOSITORY: flask-student-app
+  IMAGE_TAG: ${{ github.sha }}
+
 
 jobs:
 
@@ -198,6 +200,9 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --parameters 'commands=[
               "set -e",
+              \"echo 'Checking .env file...'\",
+
+              \"if [ ! -f /home/ec2-user/.env ]; then echo 'ERROR: .env file is missing'; exit 1; fi\",
 
               "echo Logging in to ECR...",
 
