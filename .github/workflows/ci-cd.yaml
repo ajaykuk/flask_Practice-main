@@ -221,6 +221,16 @@ jobs:
 
               "docker run -d --name flask-student-app --restart unless-stopped -p 5000:5000 --env-file /home/ec2-user/.env 490600801130.dkr.ecr.us-east-1.amazonaws.com/flask-student-app:${{ github.sha }}",
 
+              "echo Waiting for application to start...",
+
+              "sleep 10",
+
+              "echo Checking application health...",
+
+              "curl --fail --silent --show-error http://localhost:5000/health",
+
+              "echo Health check passed successfully!",
+
               "echo Deployment completed successfully.",
 
               "docker ps"
