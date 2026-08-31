@@ -200,9 +200,9 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --parameters 'commands=[
               "set -e",
-              \"echo 'Checking .env file...'\",
+              "echo 'Checking .env file...'",
 
-              \"if [ ! -f /home/ec2-user/.env ]; then echo 'ERROR: .env file is missing'; exit 1; fi\",
+              "if [ ! -f /home/ec2-user/.env ]; then echo 'ERROR: .env file is missing'; exit 1; fi\",
 
               "echo Logging in to ECR...",
 
