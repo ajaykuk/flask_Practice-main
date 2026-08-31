@@ -205,7 +205,7 @@ jobs:
               "aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 490600801130.dkr.ecr.us-east-1.amazonaws.com",
               
 
-              "echo "Deploying image with tag: ${{github.sha}}",
+              "echo Deploying image with tag: ${{github.sha}}",
 
               "docker pull 490600801130.dkr.ecr.us-east-1.amazonaws.com/flask-student-app:${{ github.sha }}",
 
