@@ -214,7 +214,7 @@ jobs:
         run: |
 
           aws ssm send-command \
-            --instance-ids "i-070dfd1bcdea9ec35" \
+            --instance-ids "i-0587a697defb611af" \
             --document-name "AWS-RunShellScript" \
             --parameters 'commands=[
               "set -e",
