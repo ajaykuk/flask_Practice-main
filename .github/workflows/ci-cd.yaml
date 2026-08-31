@@ -14,7 +14,6 @@ permissions:
 env:
   AWS_REGION: us-east-1
   ECR_REPOSITORY: flask-student-app
-  IMAGE_TAG: ${{ github.sha }}
 
 jobs:
 
@@ -114,6 +113,18 @@ jobs:
             print("exp:", claims.get("exp"))
             print("iat:", claims.get("iat"))
             PY
+      
+
+          # 🆕 NEW
+      - name: Set Docker image tag from Git commit SHA
+        id: image-tag
+        run: |
+          IMAGE_TAG="${GITHUB_SHA}"
+          echo "IMAGE_TAG=${IMAGE_TAG}"
+          echo "image_tag=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
+
+
+            
       # --------------------------------------------------------
       # Configure AWS using GitHub OIDC
       # --------------------------------------------------------
