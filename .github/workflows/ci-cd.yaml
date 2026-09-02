@@ -492,10 +492,10 @@ jobs:
             ${{ needs.test.result }}
 
             BUILD:
-            ${{ needs.build.result }}
+            ${{ needs.build-and-push.result }}
 
             PUSH TO ECR:
-            ${{ needs.push.result }}
+            ${{ needs.build-and-push.result }}
 
             DEPLOY:
             ${{ needs.deploy.result }}
